@@ -1,4 +1,3 @@
-
     # Study: ----
     # Essure hysteroscopic vs laparoscopic and subsequent 
     # surgery outcome 
