@@ -1,4 +1,3 @@
-
     # Study: ----
     # Essure hysteroscopic vs laparoscopic and subsequent 
     # surgery outcome 
@@ -251,7 +250,7 @@ UNION  select c.concept_id
     createPsArgs1 <- CohortMethod::createCreatePsArgs(control = defaultControl) # Using only defaults
     trimByPsArgs1 <- CohortMethod::createTrimByPsArgs(trimFraction = 0.05) 
     trimByPsToEquipoiseArgs1 <- CohortMethod::createTrimByPsToEquipoiseArgs() # Using only defaults 
-    matchOnPsArgs1 <- CohortMethod::createMatchOnPsArgs(caliper = 0.25, caliperScale = "standardized", maxRatio = 1) 
+    matchOnPsArgs1 <- CohortMethod::createMatchOnPsArgs(caliper = 0.25, caliperScale = "standardized", maxRatio = 4) 
     stratifyByPsArgs1 <- CohortMethod::createStratifyByPsArgs() # Using only defaults 
 
     cmAnalysis1 <- CohortMethod::createCmAnalysis(analysisId = 1,
