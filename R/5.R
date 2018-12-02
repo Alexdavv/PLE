@@ -236,7 +236,7 @@ UNION  select c.concept_id
                                         minDaysAtRisk = 0,
                                         riskWindowStart = 0,
                                         addExposureDaysToStart = FALSE,
-                                        riskWindowEnd = 30,
+                                        riskWindowEnd = 90,
                                         addExposureDaysToEnd = FALSE)
 
 
