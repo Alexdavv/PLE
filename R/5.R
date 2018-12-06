@@ -61,14 +61,14 @@
     # The code below ASSUMES you are only running in your local network 
     # where common cohort IDs have already been assigned in the cohort table.
 
-    # Get all ESSURE Essure procedure Concept IDs for exclusion ----
+    # Get all ESSURE Essure procedure & ESSURE laparoscopic sterilization Concept IDs for exclusion ----
     sql <- paste("select distinct I.concept_id FROM
 ( 
-  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (43530800,2110228,40658177)and invalid_reason is null
+  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (43530800,2110228,40658177,4228197,2774801,4073283,4073284,4075014,4036943,4140385,2110242,2110243,4100097,4339218) and invalid_reason is null
 UNION  select c.concept_id
   from @vocabulary_database_schema.CONCEPT c
   join @vocabulary_database_schema.CONCEPT_ANCESTOR ca on c.concept_id = ca.descendant_concept_id
-  and ca.ancestor_concept_id in (43530800,2110228,40658177)
+  and ca.ancestor_concept_id in (43530800,2110228,40658177,4228197,2774801,4073283,4073284,4075014,4036943,4140385,2110242,2110243,4100097,4339218)
   and c.invalid_reason is null
 
 ) I
