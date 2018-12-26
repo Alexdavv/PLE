@@ -61,17 +61,23 @@
     # The code below ASSUMES you are only running in your local network 
     # where common cohort IDs have already been assigned in the cohort table.
 
-    # Get all ESSURE Essure procedure & ESSURE laparoscopic sterilization Concept IDs for exclusion ----
+    # Get all ESSURE covariates to exclude hyst + lap Concept IDs for exclusion ----
     sql <- paste("select distinct I.concept_id FROM
 ( 
-  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (43530800,2110228,40658177,4228197,2774801,4073283,4073284,4075014,4036943,4140385,2110242,2110243,4100097,4339218) and invalid_reason is null
+  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (2100997,2101014,2101597,2101590,4228197,2110199,2774801,4073283,4073284,4075014,2211565,43530800,2110228,2110760,4036943,4140385,2110242,2110243,4100097,4339218,4335020,4163273,4030568,40658177,2110200)and invalid_reason is null
 UNION  select c.concept_id
   from @vocabulary_database_schema.CONCEPT c
   join @vocabulary_database_schema.CONCEPT_ANCESTOR ca on c.concept_id = ca.descendant_concept_id
-  and ca.ancestor_concept_id in (43530800,2110228,40658177,4228197,2774801,4073283,4073284,4075014,4036943,4140385,2110242,2110243,4100097,4339218)
+  and ca.ancestor_concept_id in (2100997,2101014,2101597,2101590,4228197,2110199,2774801,4073283,4073284,4075014,2211565,43530800,2110228,2110760,4036943,4140385,2110242,2110243,4100097,4339218,4335020,4163273,4030568,40658177,2110200)
   and c.invalid_reason is null
 
 ) I
+LEFT JOIN
+(
+  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (2103796)and invalid_reason is null
+
+) E ON I.concept_id = E.concept_id
+WHERE E.concept_id is null
 ")
     sql <- SqlRender::renderSql(sql, cdm_database_schema = cdmDatabaseSchema, vocabulary_database_schema = vocabularyDatabaseSchema)$sql
     sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
@@ -116,21 +122,21 @@ UNION  select c.concept_id
                                          useDemographicsAgeGroup = TRUE,
                                          useDemographicsRace = TRUE,
                                          useDemographicsEthnicity = TRUE,
-                                         useDemographicsIndexYear = FALSE,
+                                         useDemographicsIndexYear = TRUE,
                                          useDemographicsIndexMonth = FALSE,
                                          useDemographicsPriorObservationTime = FALSE,
                                          useDemographicsPostObservationTime = FALSE,
                                          useDemographicsTimeInCohort = FALSE,
                                          useDemographicsIndexYearMonth = FALSE,
                                          useConditionOccurrenceAnyTimePrior = FALSE,
-                                         useConditionOccurrenceLongTerm = TRUE,
+                                         useConditionOccurrenceLongTerm = FALSE,
                                          useConditionOccurrenceMediumTerm = FALSE,
                                          useConditionOccurrenceShortTerm = FALSE,
                                          useConditionOccurrenceInpatientAnyTimePrior = FALSE,
                                          useConditionOccurrenceInpatientLongTerm = FALSE,
                                          useConditionOccurrenceInpatientMediumTerm = FALSE,
                                          useConditionOccurrenceInpatientShortTerm = FALSE,
-                                         useConditionEraAnyTimePrior = FALSE,
+                                         useConditionEraAnyTimePrior = TRUE,
                                          useConditionEraLongTerm = FALSE,
                                          useConditionEraMediumTerm = FALSE,
                                          useConditionEraShortTerm = FALSE,
@@ -175,7 +181,7 @@ UNION  select c.concept_id
                                          useDeviceExposureMediumTerm = FALSE,
                                          useDeviceExposureShortTerm = FALSE,
                                          useMeasurementAnyTimePrior = FALSE,
-                                         useMeasurementLongTerm = FALSE, 
+                                         useMeasurementLongTerm = TRUE, 
                                          useMeasurementMediumTerm = FALSE,
                                          useMeasurementShortTerm = FALSE,
                                          useMeasurementValueAnyTimePrior = FALSE,
@@ -220,7 +226,7 @@ UNION  select c.concept_id
                                          includedCovariateIds = c())																				 
    
 
-    getDbCmDataArgs <- CohortMethod::createGetDbCohortMethodDataArgs(washoutPeriod = 0,
+    getDbCmDataArgs <- CohortMethod::createGetDbCohortMethodDataArgs(washoutPeriod = 30,
                                               firstExposureOnly = FALSE,
                                               removeDuplicateSubjects = TRUE,
                                               studyStartDate = "",
@@ -230,7 +236,7 @@ UNION  select c.concept_id
 
     createStudyPopArgs <- CohortMethod::createCreateStudyPopulationArgs(removeSubjectsWithPriorOutcome = FALSE,
                                         firstExposureOnly = FALSE,
-                                        washoutPeriod = 0,
+                                        washoutPeriod = 30,
                                         removeDuplicateSubjects = TRUE,
                                         minDaysAtRisk = 0,
                                         riskWindowStart = 0,
@@ -250,7 +256,7 @@ UNION  select c.concept_id
     createPsArgs1 <- CohortMethod::createCreatePsArgs(control = defaultControl) # Using only defaults
     trimByPsArgs1 <- CohortMethod::createTrimByPsArgs(trimFraction = 0.05) 
     trimByPsToEquipoiseArgs1 <- CohortMethod::createTrimByPsToEquipoiseArgs() # Using only defaults 
-    matchOnPsArgs1 <- CohortMethod::createMatchOnPsArgs(caliper = 0.25, caliperScale = "standardized", maxRatio = 4) 
+    matchOnPsArgs1 <- CohortMethod::createMatchOnPsArgs(caliper = 0.25, caliperScale = "standardized", maxRatio = 1) 
     stratifyByPsArgs1 <- CohortMethod::createStratifyByPsArgs() # Using only defaults 
 
     cmAnalysis1 <- CohortMethod::createCmAnalysis(analysisId = 1,
