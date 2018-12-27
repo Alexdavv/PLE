@@ -106,8 +106,11 @@ negativeControlConcepts <- c()
 
 
 # Create drug comparator and outcome arguments by combining target + comparitor + outcome + negative controls ----
+comparatorIds = list(laparo = comparatorCohortId,
+                     iud = comparatorCohortId2)
+
 dcos <- CohortMethod::createDrugComparatorOutcomes(targetId = targetCohortId,
-                                                   comparatorId = comparatorCohortId,
+                                                   comparatorId = comparatorIds,
                                                    excludedCovariateConceptIds = excludedConcepts,
                                                    includedCovariateConceptIds = includedConcepts,
                                                    outcomeIds = c(outcomeList, negativeControlConcepts))
@@ -260,7 +263,8 @@ matchOnPsArgs1 <- CohortMethod::createMatchOnPsArgs(caliper = 0.25, caliperScale
 stratifyByPsArgs1 <- CohortMethod::createStratifyByPsArgs() # Using only defaults 
 
 cmAnalysis1 <- CohortMethod::createCmAnalysis(analysisId = 1,
-                                              description = "Essure hysteroscopic vs laparoscopic and subsequent surgery outcome",
+                                              description = "Essure hysteroscopic vs laparoscopic on pregnancy outcome",
+                                              comparatorType = "laparo",
                                               getDbCohortMethodDataArgs = getDbCmDataArgs,
                                               createStudyPopArgs = createStudyPopArgs,
                                               createPs = TRUE,
@@ -277,8 +281,25 @@ cmAnalysis1 <- CohortMethod::createCmAnalysis(analysisId = 1,
                                               fitOutcomeModel = TRUE,
                                               fitOutcomeModelArgs = fitOutcomeModelArgs1)
 
-
-cmAnalysisList <- list(cmAnalysis1)
+cmAnalysis2 <- CohortMethod::createCmAnalysis(analysisId = 2,
+                                              description = "Essure hysteroscopic vs IUD on pregnancy outcome",
+                                              comparatorType = "iud",
+                                              getDbCohortMethodDataArgs = getDbCmDataArgs,
+                                              createStudyPopArgs = createStudyPopArgs,
+                                              createPs = TRUE,
+                                              createPsArgs = createPsArgs1,
+                                              trimByPs = TRUE,
+                                              trimByPsArgs = trimByPsArgs1,
+                                              trimByPsToEquipoise = FALSE,
+                                              trimByPsToEquipoiseArgs = trimByPsToEquipoiseArgs1,
+                                              matchOnPs = TRUE,
+                                              matchOnPsArgs = matchOnPsArgs1,
+                                              stratifyByPs = FALSE,
+                                              stratifyByPsArgs = stratifyByPsArgs1,
+                                              computeCovariateBalance = TRUE,
+                                              fitOutcomeModel = TRUE,
+                                              fitOutcomeModelArgs = fitOutcomeModelArgs1)
+cmAnalysisList <- list(cmAnalysis1, cmAnalysis2)
 
 # Run the analysis ----
 result <- CohortMethod::runCmAnalyses(connectionDetails = connectionDetails,
