@@ -35,7 +35,7 @@ outcomeDatabaseSchema <- "full_201803_omop_v5_rstudy"
 exposureTable <- "cohort"
 outcomeTable <- "cohort"
 cdmVersion <- "5" 
-outputFolder <- "~/PLE/5_6/pharmetrix201803/hyst_lap_-1Days_1-1/1"
+outputFolder <- "~/PLE/5_6/pharmetrix201803/hyst_lap_-0Days_1-1/1no_trim_cov_procedures+1"
 setwd(outputFolder)
 maxCores <- 64
 targetCohortId <- 3200
@@ -71,29 +71,22 @@ defaultControl <- Cyclops::createControl(cvType = "auto",
 # The code below ASSUMES you are only running in your local network 
 # where common cohort IDs have already been assigned in the cohort table.
 
-# Get all ESSURE Covariates to exclude Hyst + Lap Procedure related ONLY Concept IDs for exclusion ----
+# Get all ESSURE Covariates to exclude
 sql <- paste("select distinct I.concept_id FROM
-             ( 
-             select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (2004322,4228197,2110199,2774801,4073283,4073284,4075014,2211565,43530800,2110228,4036943,4140385,2110242,2722199,2110243,4100097,4339218,2110235,4163273,2805354,2781149,2004325,2004327,2004328,40658177,2110200)and invalid_reason is null
-             UNION  select c.concept_id
-             from @vocabulary_database_schema.CONCEPT c
-             join @vocabulary_database_schema.CONCEPT_ANCESTOR ca on c.concept_id = ca.descendant_concept_id
-             and ca.ancestor_concept_id in (2004322,4228197,2110199,2774801,4073283,4073284,4075014,2211565,43530800,2110228,4036943,4140385,2110242,2722199,2110243,4100097,4339218,2110235,4163273,2805354,2781149,2004325,2004327,2004328,40658177,2110200)
-             and c.invalid_reason is null
-             
-             ) I
-             LEFT JOIN
-             (
-             select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (2103796)and invalid_reason is null
-             UNION  select c.concept_id
-             from @vocabulary_database_schema.CONCEPT c
-             join @vocabulary_database_schema.CONCEPT_ANCESTOR ca on c.concept_id = ca.descendant_concept_id
-             and ca.ancestor_concept_id in (2103796)
-             and c.invalid_reason is null
-             
-             ) E ON I.concept_id = E.concept_id
-             WHERE E.concept_id is null
-             ")
+( 
+  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in 
+
+(4228197,2774801,4073283,4073284,4075014,43530800,2110228,4036943,4140385,2110242,2722199,2110243,4100097,4339218,2805354,2781149,40658177, 2101014)and invalid_reason is null
+UNION  select c.concept_id
+  from @vocabulary_database_schema.CONCEPT c
+  join @vocabulary_database_schema.CONCEPT_ANCESTOR ca on c.concept_id = ca.descendant_concept_id
+  and ca.ancestor_concept_id in 
+
+(4228197,2774801,4073283,4073284,4075014,43530800,2110228,4036943,4140385,2110242,2722199,2110243,4100097,4339218,2805354,2781149,40658177, 2101014)
+  and c.invalid_reason is null
+
+) I
+")
 sql <- SqlRender::renderSql(sql, cdm_database_schema = cdmDatabaseSchema, vocabulary_database_schema = vocabularyDatabaseSchema)$sql
 sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
 connection <- DatabaseConnector::connect(connectionDetails)
@@ -121,14 +114,14 @@ negativeControlConcepts <- c(4243973,4294382,4189286,4142645,4080549,78619,73241
 
 
 # Create drug comparator and outcome arguments by combining target + comparitor + outcome + negative controls ----
-dcos <- CohortMethod::createDrugComparatorOutcomes(targetId = targetCohortId,
+dcos <- CohortMethod::createTargetComparatorOutcomes(targetId = targetCohortId,
                                                    comparatorId = comparatorCohortId,
                                                    excludedCovariateConceptIds = excludedConcepts,
                                                    includedCovariateConceptIds = includedConcepts,
                                                    outcomeIds = c(outcomeList, negativeControlConcepts))
 
 
-drugComparatorOutcomesList <- list(dcos)
+targetComparatorOutcomesList <- list(dcos)
 
 
 
@@ -148,10 +141,10 @@ covariateSettings1 <- FeatureExtraction::createCovariateSettings(useDemographics
                                                                  useConditionOccurrenceLongTerm = FALSE,
                                                                  useConditionOccurrenceMediumTerm = FALSE,
                                                                  useConditionOccurrenceShortTerm = FALSE,
-                                                                 useConditionOccurrenceInpatientAnyTimePrior = FALSE,
-                                                                 useConditionOccurrenceInpatientLongTerm = FALSE,
-                                                                 useConditionOccurrenceInpatientMediumTerm = FALSE,
-                                                                 useConditionOccurrenceInpatientShortTerm = FALSE,
+                                                                 useConditionOccurrencePrimaryInpatientAnyTimePrior = FALSE,
+                                                                 useConditionOccurrencePrimaryInpatientLongTerm = FALSE,
+                                                                 useConditionOccurrencePrimaryInpatientMediumTerm = FALSE,
+                                                                 useConditionOccurrencePrimaryInpatientShortTerm = FALSE,
                                                                  useConditionEraAnyTimePrior = TRUE,
                                                                  useConditionEraLongTerm = FALSE,
                                                                  useConditionEraMediumTerm = FALSE,
@@ -234,7 +227,7 @@ covariateSettings1 <- FeatureExtraction::createCovariateSettings(useDemographics
                                                                  longTermStartDays = -365,
                                                                  mediumTermStartDays = -180, 
                                                                  shortTermStartDays = -30, 
-                                                                 endDays = -1,
+                                                                 endDays = 0,
                                                                  includedCovariateConceptIds = includedConcepts, 
                                                                  addDescendantsToInclude = FALSE,
                                                                  excludedCovariateConceptIds = excludedConcepts, 
@@ -256,10 +249,10 @@ covariateSettings7 <- FeatureExtraction::createCovariateSettings(useDemographics
                                                                  useConditionOccurrenceLongTerm = FALSE,
                                                                  useConditionOccurrenceMediumTerm = FALSE,
                                                                  useConditionOccurrenceShortTerm = FALSE,
-                                                                 useConditionOccurrenceInpatientAnyTimePrior = FALSE,
-                                                                 useConditionOccurrenceInpatientLongTerm = FALSE,
-                                                                 useConditionOccurrenceInpatientMediumTerm = FALSE,
-                                                                 useConditionOccurrenceInpatientShortTerm = FALSE,
+                                                                 useConditionOccurrencePrimaryInpatientAnyTimePrior = FALSE,
+                                                                 useConditionOccurrencePrimaryInpatientLongTerm = FALSE,
+                                                                 useConditionOccurrencePrimaryInpatientMediumTerm = FALSE,
+                                                                 useConditionOccurrencePrimaryInpatientShortTerm = FALSE,
                                                                  useConditionEraAnyTimePrior = TRUE,
                                                                  useConditionEraLongTerm = FALSE,
                                                                  useConditionEraMediumTerm = FALSE,
@@ -440,17 +433,21 @@ createStudyPopArgs7 <- CohortMethod::createCreateStudyPopulationArgs(removeSubje
 fitOutcomeModelArgs1 <- CohortMethod::createFitOutcomeModelArgs(useCovariates = FALSE,
                                                                 modelType = "logistic",
                                                                 stratified = TRUE,
-                                                                includeCovariateIds = omIncludedConcepts, 
+                                                                includeCovariateIds = omIncludedConcepts,
                                                                 excludeCovariateIds = omExcludedConcepts,
-                                                                prior = defaultPrior, 
+                                                                prior = defaultPrior,
                                                                 control = defaultControl)
 
 createPsArgs1 <- CohortMethod::createCreatePsArgs(control = defaultControl) # Using only defaults
-trimByPsArgs1 <- CohortMethod::createTrimByPsArgs(trimFraction = 0.05) 
+trimByPsArgs1 <- CohortMethod::createTrimByPsArgs(trimFraction = 0.05)
 trimByPsToEquipoiseArgs1 <- CohortMethod::createTrimByPsToEquipoiseArgs() # Using only defaults 
 matchOnPsArgs1 <- CohortMethod::createMatchOnPsArgs(caliper = 0.25, caliperScale = "standardized", maxRatio = 1)
-matchOnPsArgs2 <- CohortMethod::createMatchOnPsArgs(caliper = 0.25, caliperScale = "standardized", maxRatio = 2)
-stratifyByPsArgs1 <- CohortMethod::createStratifyByPsArgs() # Using only defaults 
+#matchOnPsArgs2 <- CohortMethod::createMatchOnPsArgs(caliper = 0.25, caliperScale = "standardized", maxRatio = 2)
+#matchOnPsAndCovariatesArgs1 <- CohortMethod::createMatchOnPsAndCovariatesArgs(caliper = 0.25, caliperScale = "standardized", maxRatio = 1, includedConcepts)
+#matchOnPsAndCovariatesArgs2 <- CohortMethod::createMatchOnPsAndCovariatesArgs(caliper = 0.25, caliperScale = "standardized", maxRatio = 2, includedConcepts)
+
+
+stratifyByPsArgs1 <- CohortMethod::createStratifyByPsArgs() # Using only defaults
 
 cmAnalysis1 <- CohortMethod::createCmAnalysis(analysisId = 1,
                                               description = "Essure hysteroscopic vs laparoscopic and pregnancy algorithm outcome",
@@ -458,7 +455,7 @@ cmAnalysis1 <- CohortMethod::createCmAnalysis(analysisId = 1,
                                               createStudyPopArgs = createStudyPopArgs1,
                                               createPs = TRUE,
                                               createPsArgs = createPsArgs1,
-                                              trimByPs = TRUE,
+                                              trimByPs = FALSE,
                                               trimByPsArgs = trimByPsArgs1,
                                               trimByPsToEquipoise = FALSE,
                                               trimByPsToEquipoiseArgs = trimByPsToEquipoiseArgs1,
@@ -466,9 +463,11 @@ cmAnalysis1 <- CohortMethod::createCmAnalysis(analysisId = 1,
                                               matchOnPsArgs = matchOnPsArgs1,
                                               stratifyByPs = FALSE,
                                               stratifyByPsArgs = stratifyByPsArgs1,
-                                              computeCovariateBalance = TRUE,
+                                              #computeCovariateBalance = TRUE,
                                               fitOutcomeModel = TRUE,
-                                              fitOutcomeModelArgs = fitOutcomeModelArgs1)
+                                              fitOutcomeModelArgs = fitOutcomeModelArgs1,
+                                              matchOnPsAndCovariates = FALSE,
+                                              stratifyByPsAndCovariates = FALSE)
 
 cmAnalysis2 <- CohortMethod::createCmAnalysis(analysisId = 2,
                                               description = "Essure hysteroscopic vs laparoscopic and pregnancy algorithm outcome",
@@ -476,7 +475,7 @@ cmAnalysis2 <- CohortMethod::createCmAnalysis(analysisId = 2,
                                               createStudyPopArgs = createStudyPopArgs2,
                                               createPs = TRUE,
                                               createPsArgs = createPsArgs1,
-                                              trimByPs = TRUE,
+                                              trimByPs = FALSE,
                                               trimByPsArgs = trimByPsArgs1,
                                               trimByPsToEquipoise = FALSE,
                                               trimByPsToEquipoiseArgs = trimByPsToEquipoiseArgs1,
@@ -484,9 +483,11 @@ cmAnalysis2 <- CohortMethod::createCmAnalysis(analysisId = 2,
                                               matchOnPsArgs = matchOnPsArgs1,
                                               stratifyByPs = FALSE,
                                               stratifyByPsArgs = stratifyByPsArgs1,
-                                              computeCovariateBalance = TRUE,
+                                              #computeCovariateBalance = TRUE,
                                               fitOutcomeModel = TRUE,
-                                              fitOutcomeModelArgs = fitOutcomeModelArgs1)
+                                              fitOutcomeModelArgs = fitOutcomeModelArgs1,
+                                              matchOnPsAndCovariates = FALSE,
+                                              stratifyByPsAndCovariates = FALSE)
 
 cmAnalysis3 <- CohortMethod::createCmAnalysis(analysisId = 3,
                                               description = "Essure hysteroscopic vs laparoscopic and pregnancy algorithm outcome",
@@ -494,7 +495,7 @@ cmAnalysis3 <- CohortMethod::createCmAnalysis(analysisId = 3,
                                               createStudyPopArgs = createStudyPopArgs3,
                                               createPs = TRUE,
                                               createPsArgs = createPsArgs1,
-                                              trimByPs = TRUE,
+                                              trimByPs = FALSE,
                                               trimByPsArgs = trimByPsArgs1,
                                               trimByPsToEquipoise = FALSE,
                                               trimByPsToEquipoiseArgs = trimByPsToEquipoiseArgs1,
@@ -502,9 +503,11 @@ cmAnalysis3 <- CohortMethod::createCmAnalysis(analysisId = 3,
                                               matchOnPsArgs = matchOnPsArgs1,
                                               stratifyByPs = FALSE,
                                               stratifyByPsArgs = stratifyByPsArgs1,
-                                              computeCovariateBalance = TRUE,
+                                              #computeCovariateBalance = TRUE,
                                               fitOutcomeModel = TRUE,
-                                              fitOutcomeModelArgs = fitOutcomeModelArgs1)
+                                              fitOutcomeModelArgs = fitOutcomeModelArgs1,
+                                              matchOnPsAndCovariates = FALSE,
+                                              stratifyByPsAndCovariates = FALSE)
 
 cmAnalysis4 <- CohortMethod::createCmAnalysis(analysisId = 4,
                                               description = "Essure hysteroscopic vs laparoscopic and pregnancy algorithm outcome",
@@ -512,7 +515,7 @@ cmAnalysis4 <- CohortMethod::createCmAnalysis(analysisId = 4,
                                               createStudyPopArgs = createStudyPopArgs4,
                                               createPs = TRUE,
                                               createPsArgs = createPsArgs1,
-                                              trimByPs = TRUE,
+                                              trimByPs = FALSE,
                                               trimByPsArgs = trimByPsArgs1,
                                               trimByPsToEquipoise = FALSE,
                                               trimByPsToEquipoiseArgs = trimByPsToEquipoiseArgs1,
@@ -520,9 +523,11 @@ cmAnalysis4 <- CohortMethod::createCmAnalysis(analysisId = 4,
                                               matchOnPsArgs = matchOnPsArgs1,
                                               stratifyByPs = FALSE,
                                               stratifyByPsArgs = stratifyByPsArgs1,
-                                              computeCovariateBalance = TRUE,
+                                              #computeCovariateBalance = TRUE,
                                               fitOutcomeModel = TRUE,
-                                              fitOutcomeModelArgs = fitOutcomeModelArgs1)
+                                              fitOutcomeModelArgs = fitOutcomeModelArgs1,
+                                              matchOnPsAndCovariates = FALSE,
+                                              stratifyByPsAndCovariates = FALSE)
 
 cmAnalysis5 <- CohortMethod::createCmAnalysis(analysisId = 5,
                                               description = "Essure hysteroscopic vs laparoscopic and pregnancy algorithm outcome",
@@ -530,7 +535,7 @@ cmAnalysis5 <- CohortMethod::createCmAnalysis(analysisId = 5,
                                               createStudyPopArgs = createStudyPopArgs5,
                                               createPs = TRUE,
                                               createPsArgs = createPsArgs1,
-                                              trimByPs = TRUE,
+                                              trimByPs = FALSE,
                                               trimByPsArgs = trimByPsArgs1,
                                               trimByPsToEquipoise = FALSE,
                                               trimByPsToEquipoiseArgs = trimByPsToEquipoiseArgs1,
@@ -538,9 +543,11 @@ cmAnalysis5 <- CohortMethod::createCmAnalysis(analysisId = 5,
                                               matchOnPsArgs = matchOnPsArgs1,
                                               stratifyByPs = FALSE,
                                               stratifyByPsArgs = stratifyByPsArgs1,
-                                              computeCovariateBalance = TRUE,
+                                              #computeCovariateBalance = TRUE,
                                               fitOutcomeModel = TRUE,
-                                              fitOutcomeModelArgs = fitOutcomeModelArgs1)
+                                              fitOutcomeModelArgs = fitOutcomeModelArgs1,
+                                              matchOnPsAndCovariates = FALSE,
+                                              stratifyByPsAndCovariates = FALSE)
 
 cmAnalysis6 <- CohortMethod::createCmAnalysis(analysisId = 6,
                                               description = "Essure hysteroscopic vs laparoscopic and pregnancy algorithm outcome",
@@ -548,7 +555,7 @@ cmAnalysis6 <- CohortMethod::createCmAnalysis(analysisId = 6,
                                               createStudyPopArgs = createStudyPopArgs6,
                                               createPs = TRUE,
                                               createPsArgs = createPsArgs1,
-                                              trimByPs = TRUE,
+                                              trimByPs = FALSE,
                                               trimByPsArgs = trimByPsArgs1,
                                               trimByPsToEquipoise = FALSE,
                                               trimByPsToEquipoiseArgs = trimByPsToEquipoiseArgs1,
@@ -556,9 +563,11 @@ cmAnalysis6 <- CohortMethod::createCmAnalysis(analysisId = 6,
                                               matchOnPsArgs = matchOnPsArgs1,
                                               stratifyByPs = FALSE,
                                               stratifyByPsArgs = stratifyByPsArgs1,
-                                              computeCovariateBalance = TRUE,
+                                              #computeCovariateBalance = TRUE,
                                               fitOutcomeModel = TRUE,
-                                              fitOutcomeModelArgs = fitOutcomeModelArgs1)
+                                              fitOutcomeModelArgs = fitOutcomeModelArgs1,
+                                              matchOnPsAndCovariates = FALSE,
+                                              stratifyByPsAndCovariates = FALSE)
 
 cmAnalysis7 <- CohortMethod::createCmAnalysis(analysisId = 7,
                                               description = "Essure hysteroscopic vs laparoscopic and pregnancy algorithm outcome",
@@ -566,7 +575,7 @@ cmAnalysis7 <- CohortMethod::createCmAnalysis(analysisId = 7,
                                               createStudyPopArgs = createStudyPopArgs7,
                                               createPs = TRUE,
                                               createPsArgs = createPsArgs1,
-                                              trimByPs = TRUE,
+                                              trimByPs = FALSE,
                                               trimByPsArgs = trimByPsArgs1,
                                               trimByPsToEquipoise = FALSE,
                                               trimByPsToEquipoiseArgs = trimByPsToEquipoiseArgs1,
@@ -574,9 +583,11 @@ cmAnalysis7 <- CohortMethod::createCmAnalysis(analysisId = 7,
                                               matchOnPsArgs = matchOnPsArgs1,
                                               stratifyByPs = FALSE,
                                               stratifyByPsArgs = stratifyByPsArgs1,
-                                              computeCovariateBalance = TRUE,
+                                              #computeCovariateBalance = TRUE,
                                               fitOutcomeModel = TRUE,
-                                              fitOutcomeModelArgs = fitOutcomeModelArgs1)
+                                              fitOutcomeModelArgs = fitOutcomeModelArgs1,
+                                              matchOnPsAndCovariates = FALSE,
+                                              stratifyByPsAndCovariates = FALSE)
 
 cmAnalysis8 <- CohortMethod::createCmAnalysis(analysisId = 8,
                                               description = "Essure hysteroscopic vs laparoscopic and pregnancy algorithm outcome",
@@ -980,33 +991,66 @@ result <- CohortMethod::runCmAnalyses(connectionDetails = connectionDetails,
                                       cdmVersion = cdmVersion,
                                       outputFolder = outputFolder,
                                       cmAnalysisList = cmAnalysisList1,
-                                      drugComparatorOutcomesList = drugComparatorOutcomesList,
+                                      targetComparatorOutcomesList = targetComparatorOutcomesList,
                                       getDbCohortMethodDataThreads = 1,
                                       createPsThreads = 1,
                                       psCvThreads = max(16, maxCores),
-                                      computeCovarBalThreads = max(3, maxCores),
+                                      #computeCovarBalThreads = max(3, maxCores),
                                       createStudyPopThreads = max(3, maxCores),
                                       trimMatchStratifyThreads = max(10, maxCores),
+                                      prefilterCovariatesThreads = maxCores,
                                       fitOutcomeModelThreads = max(1, round(maxCores/4)),
                                       outcomeCvThreads = min(4, maxCores),
-                                      refitPsForEveryOutcome = FALSE)
+                                      refitPsForEveryOutcome = FALSE,
+                                      refitPsForEveryStudyPopulation = FALSE,
+                                      prefilterCovariates = FALSE,
+                                      compressCohortMethodData = FALSE)
 
 
 write.csv (result, file = "0result.csv")
 
+
+
+#cohortMethodData1 <- CohortMethod::getDbCohortMethodData(connectionDetails = connectionDetails,
+#                                                        cdmDatabaseSchema = cdmDatabaseSchema,
+#                                                        targetId = targetCohortId,
+#                                                        comparatorId = comparatorCohortId,
+#                                                        outcomeIds = c(outcomeList, negativeControlConcepts),
+#                                                        studyStartDate = "20120501",
+#                                                        studyEndDate = "",
+#                                                        exposureDatabaseSchema = exposureDatabaseSchema,
+#                                                        exposureTable = exposureTable,
+#                                                        outcomeDatabaseSchema = outcomeDatabaseSchema,
+#                                                        outcomeTable = outcomeTable,
+#                                                        cdmVersion = cdmVersion,
+#                                                        firstExposureOnly = FALSE,
+#                                                        removeDuplicateSubjects = TRUE,
+#                                                        restrictToCommonPeriod = FALSE,
+#                                                        washoutPeriod = 30,
+#                                                        maxCohortSize = 0,
+#                                                        covariateSettings = covariateSettings1)
+                                                
+                                                
+                                     
+                                                      
+                                                        
+                                                        
+                                                        
+                                                        
+
 ## Summarize the results
-analysisSummary <- CohortMethod::summarizeAnalyses(result)
+analysisSummary <- CohortMethod::summarizeAnalyses(result, outputFolder)
 #head(analysisSummary)
 write.csv (analysisSummary, file = "0analysisSummary.csv")
 
 # Perform Empirical Calibration ----
 newSummary <- data.frame()
 # Calibrate p-values:
-for (drugComparatorOutcome in drugComparatorOutcomesList) {
+for (targetComparatorOutcome in targetComparatorOutcomesList) {
   for (analysisId in unique(analysisSummary$analysisId)) {
     subset <- analysisSummary[analysisSummary$analysisId == analysisId &
-                                analysisSummary$targetId == drugComparatorOutcome$targetId &
-                                analysisSummary$comparatorId == drugComparatorOutcome$comparatorId, ]
+                                analysisSummary$targetId == targetComparatorOutcome$targetId &
+                                analysisSummary$comparatorId == targetComparatorOutcome$comparatorId, ]
     
     negControlSubset <- subset[analysisSummary$outcomeId %in% negativeControlConcepts, ]
     negControlSubset <- negControlSubset[!is.na(negControlSubset$logRr) & negControlSubset$logRr != 0, ]
@@ -1022,7 +1066,7 @@ for (drugComparatorOutcome in drugComparatorOutcomesList) {
       #                                            negControlSubset$seLogRr,showCis = TRUE)
       
       # Save the empirical calibration plot with only negative controls
-      plotName <- paste("calEffectNoHois_a",analysisId, "_t", drugComparatorOutcome$targetId, "_c", drugComparatorOutcome$comparatorId, ".png", sep = "")
+      plotName <- paste("calEffectNoHois_a",analysisId, "_t", targetComparatorOutcome$targetId, "_c", targetComparatorOutcome$comparatorId, ".png", sep = "")
       EmpiricalCalibration::plotCalibrationEffect(negControlSubset$logRr,
                                                   negControlSubset$seLogRr,
                                                   fileName = file.path(outputFolder, plotName),showCis = TRUE)
@@ -1034,7 +1078,7 @@ for (drugComparatorOutcome in drugComparatorOutcomesList) {
       #                                            hoiSubset$seLogRr,showCis = TRUE)
       
       # Save the empirical calibration plot with  negative controls and HOIs plotted
-      plotName <- paste("calEffect_a",analysisId, "_t", drugComparatorOutcome$targetId, "_c", drugComparatorOutcome$comparatorId, ".png", sep = "")
+      plotName <- paste("calEffect_a",analysisId, "_t", targetComparatorOutcome$targetId, "_c", targetComparatorOutcome$comparatorId, ".png", sep = "")
       EmpiricalCalibration::plotCalibrationEffect(negControlSubset$logRr,
                                                   negControlSubset$seLogRr,
                                                   hoiSubset$logRr, 
@@ -1065,16 +1109,19 @@ write.csv (newSummary, file = "0newSummary.csv")
 
 
 
+
+
+
 # Results ----
-for (drugComparatorOutcome in drugComparatorOutcomesList) {
+for (targetComparatorOutcome in targetComparatorOutcomesList) {
   for (analysisId in unique(analysisSummary$analysisId)) {
     currentAnalysisSubset <- analysisSummary[analysisSummary$analysisId == analysisId &
-                                               analysisSummary$targetId == drugComparatorOutcome$targetId &
-                                               analysisSummary$comparatorId == drugComparatorOutcome$comparatorId &
+                                               analysisSummary$targetId == targetComparatorOutcome$targetId &
+                                               analysisSummary$comparatorId == targetComparatorOutcome$comparatorId &
                                                analysisSummary$outcomeId %in% outcomeList, ]
     
     for(currentOutcomeId in unique(currentAnalysisSubset$outcomeId)) {
-      outputImageSuffix <- paste0("_a",analysisId, "_t", drugComparatorOutcome$targetId, "_c", drugComparatorOutcome$comparatorId, "_o", currentOutcomeId, ".png")
+      outputImageSuffix <- paste0("_a",analysisId, "_t", targetComparatorOutcome$targetId, "_c", targetComparatorOutcome$comparatorId, "_o", currentOutcomeId, ".png")
       
       cohortMethodFile <- result$cohortMethodDataFolder[result$target == currentAnalysisSubset$targetId &
                                                           result$comparatorId == currentAnalysisSubset$comparatorId &
@@ -1179,7 +1226,7 @@ for (drugComparatorOutcome in drugComparatorOutcomesList) {
       write.csv (strataPop, file = fileName)
       
       
-
+      
       Mdrr_strataPop <- computeMdrr (population = strataPop,
                                      modelType = "cox",
                                      alpha = 0.05,
@@ -1225,13 +1272,11 @@ for (drugComparatorOutcome in drugComparatorOutcomesList) {
       
       
       # Plot the covariate balance ----
-      balanceFile <- result$covariateBalanceFile[result$target == currentAnalysisSubset$targetId &
-                                                   result$comparatorId == currentAnalysisSubset$comparatorId &
-                                                   result$outcomeId == currentOutcomeId &
-                                                   result$analysisId == analysisId]
-      balance <- readRDS(balanceFile)
-      
-      
+      #balanceFile <- result$covariateBalanceFile[result$target == currentAnalysisSubset$targetId &
+      #                                             result$comparatorId == currentAnalysisSubset$comparatorId &
+      #                                             result$outcomeId == currentOutcomeId &
+      #                                             result$analysisId == analysisId]
+      #balance <- readRDS(balanceFile)
       
 
       # View the covariate balance scatter plot ----
@@ -1257,14 +1302,14 @@ for (drugComparatorOutcome in drugComparatorOutcomesList) {
                       includeZero = FALSE,
                       fileName = file.path(outputFolder, plotName))
       
-
+      
       plotName <- paste0("Kaplan-MeierPlot_strataPop", outputImageSuffix);
       plotKaplanMeier(strataPop,
                       includeZero = FALSE,
                       fileName = file.path(outputFolder, plotName))
       
       
-
+      
       # Outcome Model ----
       
       outcomeFile <- result$outcomeModelFile[result$target == currentAnalysisSubset$targetId &
@@ -1328,20 +1373,40 @@ for (drugComparatorOutcome in drugComparatorOutcomesList) {
   
 }
 
+
+balance <- CohortMethod::computeCovariateBalance (population = strataPop,
+                                                  cohortMethodData = cohortMethodData)
+
+CmTable1_balance <- createCmTable1(balance)
+write.csv (CmTable1_balance, file = "0CmTable1_balance.csv")
+
+
+#fileName <- paste0("0balance", outputImageSuffix, ".csv");
+#write.csv (balance, file = fileName)
+
+
+
+FollowUpDistribution_study <- getFollowUpDistribution(studyPop)
+write.csv (FollowUpDistribution_study, file = "0FollowUpDistribution_study.csv")
+
+FollowUpDistribution_strata <- getFollowUpDistribution(strataPop)
+write.csv (FollowUpDistribution_strata, file = "0FollowUpDistribution_strata.csv")
+
+
+
 #Checked that the same
 write.csv (balance, file = "0balance.csv")
 
 #Checked that the same
 write.csv (propensityModel, file = "0propensityModel.csv")
 
-#Checked that the same
+
 getAttritionTable_studyPop <- getAttritionTable(studyPop)
 write.csv (getAttritionTable_studyPop, file = "0getAttritionTable_studyPop.csv")
 
 #getAttritionTable_ps <- getAttritionTable(ps)
 #write.csv (getAttritionTable_ps, file = "0getAttritionTable_ps.csv")
 
-#Checked that the same
 getAttritionTable_strataPop <- getAttritionTable(strataPop)
 write.csv (getAttritionTable_strataPop, file = "0getAttritionTable_strataPop.csv")
 
@@ -1368,11 +1433,10 @@ write.csv (getAttritionTable_strataPop, file = "0getAttritionTable_strataPop.csv
 #                               twoSided = TRUE)
 #write.csv (Mdrr_strataPop, file = "0Mdrr_cox_strataPop.csv")
 
-#Checked that the same
 psAuc <- CohortMethod::computePsAuc(ps)
 write.csv (psAuc, file = "0psAuc.csv")
 
-#Checked that the same
+
 strataPopAuc <- CohortMethod::computePsAuc(strataPop)
 write.csv (strataPopAuc, file = "0strataPopAuc.csv")
 
@@ -1380,23 +1444,108 @@ write.csv (strataPopAuc, file = "0strataPopAuc.csv")
 # Save the attrition diagram ----
 plotName <- "attritionDiagram.png";
 drawAttritionDiagram(studyPop, 
-                     treatmentLabel = "Target", 
+                     targetLabel = "Target", 
                      comparatorLabel = "Comparator", 
                      fileName = file.path(outputFolder, plotName))
 
 
+
+
+
+
 # Save the propensity score distribution ----
-plotName <- "propensityScorePlot.png";
+plotName <- "propensityScorePlot_preference.png";
 CohortMethod::plotPs(ps, 
                      scale = "preference",
-                     fileName = file.path(outputFolder, plotName))
+                     showCountsLabel = TRUE,
+                     showAucLabel = TRUE,
+                     showEquiposeLabel = TRUE,
+                     fileName = file.path(outputFolder, plotName),
+                     type = 'density')
+
+
+plotName <- "propensityScorePlot_propensity.png";
+CohortMethod::plotPs(ps, 
+                     scale = "propensity",
+                     showCountsLabel = TRUE,
+                     showAucLabel = TRUE,
+                     showEquiposeLabel = TRUE,
+                     fileName = file.path(outputFolder, plotName),
+                     type = 'density')
+
+
+# Save the propensity score distribution ----
+plotName <- "propensityScorePlot_preference_hist.png";
+CohortMethod::plotPs(ps, 
+                     scale = "preference",
+                     showCountsLabel = TRUE,
+                     showAucLabel = TRUE,
+                     showEquiposeLabel = TRUE,
+                     fileName = file.path(outputFolder, plotName),
+                     type = 'histogram')
+
+
+plotName <- "propensityScorePlot_propensity_hist.png";
+CohortMethod::plotPs(ps, 
+                     scale = "propensity",
+                     showCountsLabel = TRUE,
+                     showAucLabel = TRUE,
+                     showEquiposeLabel = TRUE,
+                     fileName = file.path(outputFolder, plotName),
+                     type = 'histogram')
+
+
+
+
+
+
+
+
 
 # Save PS With Population Trimmed By Percentile ----
-plotName <- "propensityScorePlotStrata.png";
+plotName <- "propensityScorePlotStrata_preference.png";
 CohortMethod::plotPs(strataPop, 
                      ps, 
                      scale = "preference",
-                     fileName = file.path(outputFolder, plotName))
+                     fileName = file.path(outputFolder, plotName),
+                     showCountsLabel = TRUE,
+                     showAucLabel = TRUE,
+                     showEquiposeLabel = TRUE,
+                     type = 'density')
+
+# Save PS With Population Trimmed By Percentile ----
+plotName <- "propensityScorePlotStrata_propensity.png";
+CohortMethod::plotPs(strataPop, 
+                     ps, 
+                     scale = "propensity",
+                     fileName = file.path(outputFolder, plotName),
+                     showCountsLabel = TRUE,
+                     showAucLabel = TRUE,
+                     showEquiposeLabel = TRUE,
+                     type = 'density')
+
+# Save PS With Population Trimmed By Percentile ----
+plotName <- "propensityScorePlotStrata_preference_hyst.png";
+CohortMethod::plotPs(strataPop, 
+                     ps, 
+                     scale = "preference",
+                     fileName = file.path(outputFolder, plotName),
+                     showCountsLabel = TRUE,
+                     showAucLabel = TRUE,
+                     showEquiposeLabel = TRUE,
+                     type = 'histogram')
+
+# Save PS With Population Trimmed By Percentile ----
+plotName <- "propensityScorePlotStrata_propensity_hyst.png";
+CohortMethod::plotPs(strataPop, 
+                     ps, 
+                     scale = "propensity",
+                     fileName = file.path(outputFolder, plotName),
+                     showCountsLabel = TRUE,
+                     showAucLabel = TRUE,
+                     showEquiposeLabel = TRUE,
+                     type = 'histogram')
+
 
 # Save the attrition diagram for the strata pop ----
 plotName <- "attritionDiagramStrata.png";
@@ -1407,6 +1556,8 @@ CohortMethod::drawAttritionDiagram(strataPop,
 # Save the covariate balance scatter plot ----
 plotName <- "covBalScatter.png";
 CohortMethod::plotCovariateBalanceScatterPlot(balance,
+                                              showCovariateCountLabel = TRUE,
+                                              showMaxLabel = TRUE,
                                               fileName = file.path(outputFolder, plotName))
 
 # Save the plot of top variables ----
@@ -1416,4 +1567,5 @@ CohortMethod::plotCovariateBalanceOfTopVariables(balance,
 
 
 summary(cohortMethodData)
+
 summary(outcomeModel)
