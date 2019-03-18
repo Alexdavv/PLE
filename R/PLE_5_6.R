@@ -24,22 +24,22 @@ library(parallel)
 
 # TODO: Insert your connection details here
 connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = "redshift",
-                                                                connectionString='jdbc:redshift://rwes-e360-analytics.cqn81xkeuvfy.us-east-1.redshift.amazonaws.com/prod_pmtx',
+                                                                connectionString='jdbc:redshift://rwes-e360-prod-openclaims.cqn81xkeuvfy.us-east-1.redshift.amazonaws.com/prod_openclaims',
                                                                 user = "usr_adavydov",
                                                                 #port = 5439,
                                                                 password = "Thursday18")
-cdmDatabaseSchema <- "full_201803_omop_v5"
-vocabularyDatabaseSchema <- "full_201803_omop_v5"
-exposureDatabaseSchema <- "full_201803_omop_v5_rstudy"
-outcomeDatabaseSchema <- "full_201803_omop_v5_rstudy"
+cdmDatabaseSchema <- "full_201807_omop_v5"
+vocabularyDatabaseSchema <- "full_201807_omop_v5"
+exposureDatabaseSchema <- "full_201807_omop_v5_rstudy"
+outcomeDatabaseSchema <- "full_201807_omop_v5_rstudy"
 exposureTable <- "cohort"
 outcomeTable <- "cohort"
 cdmVersion <- "5" 
-outputFolder <- "~/PLE/5_6/pharmetrix201803/hyst_lap_-0Days_1-1/1no_trim_cov_procedures+1"
+outputFolder <- "~/PLE/5_6/openclaims201807/hyst_iud_-1Days_1-1/1no_trim"
 setwd(outputFolder)
 maxCores <- 64
 targetCohortId <- 3200
-comparatorCohortId <- 3190
+comparatorCohortId <- 3180
 outcomeCohortId1 <- 999
 outcomeCohortId2 <- 321
 outcomeCohortId3 <- 468
@@ -74,19 +74,26 @@ defaultControl <- Cyclops::createControl(cvType = "auto",
 # Get all ESSURE Covariates to exclude
 sql <- paste("select distinct I.concept_id FROM
 ( 
-  select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in 
-
-(4228197,2774801,4073283,4073284,4075014,43530800,2110228,4036943,4140385,2110242,2722199,2110243,4100097,4339218,2805354,2781149,40658177, 2101014)and invalid_reason is null
-UNION  select c.concept_id
-  from @vocabulary_database_schema.CONCEPT c
-  join @vocabulary_database_schema.CONCEPT_ANCESTOR ca on c.concept_id = ca.descendant_concept_id
-  and ca.ancestor_concept_id in 
-
-(4228197,2774801,4073283,4073284,4075014,43530800,2110228,4036943,4140385,2110242,2722199,2110243,4100097,4339218,2805354,2781149,40658177, 2101014)
-  and c.invalid_reason is null
-
+             select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (2004322,2110199,2721261,2211565,43530800,2110228,4060131,4275113,2110194,40355609,46102934,2110235,4163273,2004325,2004327,2004328,40658177,2110200)and invalid_reason is null
+             UNION  select c.concept_id
+             from @vocabulary_database_schema.CONCEPT c
+             join @vocabulary_database_schema.CONCEPT_ANCESTOR ca on c.concept_id = ca.descendant_concept_id
+             and ca.ancestor_concept_id in (2004322,2110199,2721261,2211565,43530800,2110228,4060131,4275113,2110194,40355609,46102934,2110235,4163273,2004325,2004327,2004328,40658177,2110200)
+             and c.invalid_reason is null
+             
 ) I
-")
+             LEFT JOIN
+             (
+             select concept_id from @vocabulary_database_schema.CONCEPT where concept_id in (2103796)and invalid_reason is null
+             UNION  select c.concept_id
+             from @vocabulary_database_schema.CONCEPT c
+             join @vocabulary_database_schema.CONCEPT_ANCESTOR ca on c.concept_id = ca.descendant_concept_id
+             and ca.ancestor_concept_id in (2103796)
+             and c.invalid_reason is null
+             
+             ) E ON I.concept_id = E.concept_id
+             WHERE E.concept_id is null
+             ")
 sql <- SqlRender::renderSql(sql, cdm_database_schema = cdmDatabaseSchema, vocabulary_database_schema = vocabularyDatabaseSchema)$sql
 sql <- SqlRender::translateSql(sql, targetDialect = connectionDetails$dbms)$sql
 connection <- DatabaseConnector::connect(connectionDetails)
@@ -115,10 +122,10 @@ negativeControlConcepts <- c(4243973,4294382,4189286,4142645,4080549,78619,73241
 
 # Create drug comparator and outcome arguments by combining target + comparitor + outcome + negative controls ----
 dcos <- CohortMethod::createTargetComparatorOutcomes(targetId = targetCohortId,
-                                                   comparatorId = comparatorCohortId,
-                                                   excludedCovariateConceptIds = excludedConcepts,
-                                                   includedCovariateConceptIds = includedConcepts,
-                                                   outcomeIds = c(outcomeList, negativeControlConcepts))
+                                                     comparatorId = comparatorCohortId,
+                                                     excludedCovariateConceptIds = excludedConcepts,
+                                                     includedCovariateConceptIds = includedConcepts,
+                                                     outcomeIds = c(outcomeList, negativeControlConcepts))
 
 
 targetComparatorOutcomesList <- list(dcos)
@@ -227,7 +234,7 @@ covariateSettings1 <- FeatureExtraction::createCovariateSettings(useDemographics
                                                                  longTermStartDays = -365,
                                                                  mediumTermStartDays = -180, 
                                                                  shortTermStartDays = -30, 
-                                                                 endDays = 0,
+                                                                 endDays = -1,
                                                                  includedCovariateConceptIds = includedConcepts, 
                                                                  addDescendantsToInclude = FALSE,
                                                                  excludedCovariateConceptIds = excludedConcepts, 
@@ -349,7 +356,8 @@ getDbCmDataArgs1 <- CohortMethod::createGetDbCohortMethodDataArgs(washoutPeriod 
                                                                   studyStartDate = "20120501",
                                                                   studyEndDate = "",
                                                                   excludeDrugsFromCovariates = FALSE,
-                                                                  covariateSettings = covariateSettings1)
+                                                                  covariateSettings = covariateSettings1,
+                                                                  maxCohortSize = 0)
 
 getDbCmDataArgs7 <- CohortMethod::createGetDbCohortMethodDataArgs(washoutPeriod = 30,
                                                                   firstExposureOnly = FALSE,
@@ -357,7 +365,8 @@ getDbCmDataArgs7 <- CohortMethod::createGetDbCohortMethodDataArgs(washoutPeriod 
                                                                   studyStartDate = "20120501",
                                                                   studyEndDate = "",
                                                                   excludeDrugsFromCovariates = FALSE,
-                                                                  covariateSettings = covariateSettings7)
+                                                                  covariateSettings = covariateSettings7,
+                                                                  maxCohortSize = 0)
 
 createStudyPopArgs1 <- CohortMethod::createCreateStudyPopulationArgs(removeSubjectsWithPriorOutcome = FALSE,
                                                                      firstExposureOnly = FALSE,
@@ -438,7 +447,7 @@ fitOutcomeModelArgs1 <- CohortMethod::createFitOutcomeModelArgs(useCovariates = 
                                                                 prior = defaultPrior,
                                                                 control = defaultControl)
 
-createPsArgs1 <- CohortMethod::createCreatePsArgs(control = defaultControl) # Using only defaults
+createPsArgs1 <- CohortMethod::createCreatePsArgs(control = defaultControl, maxCohortSizeForFitting = 0) # Using only defaults
 trimByPsArgs1 <- CohortMethod::createTrimByPsArgs(trimFraction = 0.05)
 trimByPsToEquipoiseArgs1 <- CohortMethod::createTrimByPsToEquipoiseArgs() # Using only defaults 
 matchOnPsArgs1 <- CohortMethod::createMatchOnPsArgs(caliper = 0.25, caliperScale = "standardized", maxRatio = 1)
@@ -1029,14 +1038,14 @@ write.csv (result, file = "0result.csv")
 #                                                        washoutPeriod = 30,
 #                                                        maxCohortSize = 0,
 #                                                        covariateSettings = covariateSettings1)
-                                                
-                                                
-                                     
-                                                      
-                                                        
-                                                        
-                                                        
-                                                        
+
+
+
+
+
+
+
+
 
 ## Summarize the results
 analysisSummary <- CohortMethod::summarizeAnalyses(result, outputFolder)
@@ -1278,7 +1287,7 @@ for (targetComparatorOutcome in targetComparatorOutcomesList) {
       #                                             result$analysisId == analysisId]
       #balance <- readRDS(balanceFile)
       
-
+      
       # View the covariate balance scatter plot ----
       #CohortMethod::plotCovariateBalanceScatterPlot(balance)
       
@@ -1358,12 +1367,12 @@ for (targetComparatorOutcome in targetComparatorOutcomesList) {
       writeLines(outcomeModelOutput)
       
     }
-    plotName <- paste0("Follow−up_distribution_studyPop_a", analysisId, ".png");
+    plotName <- paste0("Follow-up_distribution_studyPop_a", analysisId, ".png");
     plotFollowUpDistribution(population = studyPop,
                              fileName = file.path(outputFolder, plotName))
     
     
-    plotName <- paste0("Follow−up_distribution_strataPop_a", analysisId, ".png");
+    plotName <- paste0("Follow-up_distribution_strataPop_a", analysisId, ".png");
     plotFollowUpDistribution(population = strataPop,
                              fileName = file.path(outputFolder, plotName))
     
